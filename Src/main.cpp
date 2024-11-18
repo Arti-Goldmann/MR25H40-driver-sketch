@@ -2,6 +2,7 @@
 
 
 int main() {
-	SPI spi();
+	MR25H40 mram = MR25H40();
+	mram.init();
 	return 0;
 }

@@ -1,19 +1,16 @@
 #include "main.h"
 #include "Spi.h"
 
+const size_t SPI::BUF_SIZE;
+
 void SPI::isr_handler_byte_transmit_done(void)
 {   
-    if(transmit)
-    {   //Передаем данные
-        *TXBUF = data[transmit_index++];
-    }
-    else
-    {   //Читаем
-        *TXBUF = data[transmit_index++]; //Выставляем клоки
-        data[transmit_index++] = *RXBUF;
-        //Ну тут конечно нужно еще подумать, на каком прерывании в RX появятся нужные
-        //данные а не мусор... но суть такая
-    }
+    //Шлем TX и параллельно читаем RX
+    *TX = txbuf[transmit_index];
+    rxbuf[transmit_index++] = *RX;
+
+    //Ну тут еще нужно подумать в какой момент RX считывать
+    //Скорее всего тут нужно будет на одно прерывание сдвинуться
     
     if(transmit_index >= transmit_len)
     {
@@ -23,44 +20,27 @@ void SPI::isr_handler_byte_transmit_done(void)
     }
 }
 
-uint16_t SPI::tx(uint8_t* tx_buffer, uint16_t tx_len)
+uint16_t SPI::transmit(uint16_t bytes_num)
 {
-    if(!busy)
+    if(!busy && (bytes_num <= sizeof(txbuf)))
     {   
-        data = tx_buffer;
-        transmit_len = tx_len;
+        transmit_len = bytes_num;
         transmit_index = 0;
         busy = true;
-        transmit = true; //Передаем
         
         chip_select_enable();
         interrupt_enable();
         return 1;
     }
-    else{
+    else
+    {
         return 0;
     }
-
 }
 
-uint16_t SPI::rx(uint8_t* rx_buffer, uint16_t rx_len)
+uint16_t SPI::is_busy(void)
 {
-    if(!busy)
-    {   
-        data = rx_buffer;
-        transmit_len = rx_len;
-        transmit_index = 0;
-        busy = true;
-        transmit = false; //Читаем
-        
-        chip_select_enable();
-        interrupt_enable();
-        return 1;
-    }
-    else{
-        return 0;
-    }
-
+    return busy;
 }
 
 
@@ -79,40 +59,40 @@ void SPI::chip_select_disable(){
 }
 
 
-SPI_A::SPI_A():
+SPI_portA::SPI_portA():
     SPI()
 {
 
 }
 
 
-void SPI_A::interrupt_enable()
+void SPI_portA::interrupt_enable()
 {
     //Дергаем регистры для этого SPI
 }
 
-void SPI_A::interrupt_disable()
+void SPI_portA::interrupt_disable()
 {
     //Дергаем регистры для этого SPI
 }
 
-void SPI_A::chip_select_enable()
+void SPI_portA::chip_select_enable()
 {
     //Дергаем ножкой чип селекта
 }
-void SPI_A::chip_select_disable()
+void SPI_portA::chip_select_disable()
 {
     //Дергаем ножкой чип селекта
 }
 
-void SPI_A::init()
+void SPI_portA::init()
 {   
     //Настраиваем GPIO (TX, RX, CLK)
     //И чип селект
     //Настраиваем регистры для этого модуля SPI
     
     //Запомним адреса регисторов
-    TXBUF = NULL;
-    RXBUF = NULL;
+    TX = NULL;
+    RX = NULL;
     // ...
 }
